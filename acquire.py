@@ -9,7 +9,7 @@ voltage_range = 0x02
 data_points = 3 * 1024
 outstanding_transfers = 10
 num_channels = 2
-rec_time = 8*60
+rec_time = 30*60
 fs = sample_rate_index*(10**(6 if sample_rate_index < 50 else 3))
 
 scope = Oscilloscope()
