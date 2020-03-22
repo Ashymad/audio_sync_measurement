@@ -3,22 +3,29 @@
 from PyHT6022.LibUsbScope import Oscilloscope
 import time
 import h5py as h5
+import sys
 
-sample_rate_index = 1
-voltage_range = 0x02
+fs = 1e6
+voltage_range = 1
 data_points = 3 * 1024
 outstanding_transfers = 10
 num_channels = 2
-rec_time = 30*60
-fs = sample_rate_index*(10**(6 if sample_rate_index < 50 else 3))
+rec_time = int(sys.argv[1])*60
 
 scope = Oscilloscope()
 scope.setup()
 scope.open_handle()
-scope.flash_firmware()
-scope.set_interface(1)  # choose ISO
+if (not scope.is_device_firmware_present):
+    scope.flash_firmware()
+calibration = scope.get_calibration_values()
+scope.set_interface(0)
 scope.set_num_channels(2)
-scope.set_sample_rate(sample_rate_index)
+if fs < 1e6:
+    sample_id = int(100 + fs/10e3)
+else:
+    sample_id = int(fs/1e6)
+scope.set_sample_rate( sample_id )
+
 scope.set_ch1_voltage_range(voltage_range)
 scope.set_ch2_voltage_range(voltage_range)
 time.sleep(1)
@@ -26,13 +33,16 @@ time.sleep(1)
 maxsize = rec_time * fs
 size = 0
 
-with h5.File('rec.h5', 'w') as f:
+with h5.File(sys.argv[2], 'w') as f:
     data = f.create_dataset("data", (2, maxsize), maxshape=(2, maxsize),
                             dtype='uint8')
 
     def extend_callback(ch1_data, ch2_data):
         global size
         dsize = len(ch1_data)
+        if (len(ch1_data) > 0 and len(ch2_data) > 0) and\
+                (max(ch1_data) > 255 or max(ch2_data) > 255):
+            raise ValueError("Value too big for uint8")
         if size < maxsize - dsize:
             data[0, size:(size + dsize)] = ch1_data
             data[1, size:(size + dsize)] = ch2_data

@@ -1,0 +1,5 @@
+*.h5
+venv/
+__pycache__/
+*.png
+*.pdf
