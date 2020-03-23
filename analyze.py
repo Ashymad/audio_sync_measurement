@@ -12,6 +12,7 @@ import probscale
 from IPython import embed
 from thdn import thdn
 import sys
+from tqdm import tqdm
 
 matplotlib.use('tkagg')
 
@@ -32,7 +33,7 @@ def normalize(x):
 
 with h5.File(sys.argv[2], "r") as f:
     data = f["data"]
-    for ind in np.arange(0, data.shape[1]-chunk_size, chunk_size):
+    for ind in tqdm(np.arange(0, data.shape[1]-chunk_size, chunk_size)):
         ch1 = normalize(data[0, ind:(ind+chunk_size)])
         ch2 = normalize(data[1, ind:(ind+chunk_size)])
         thdns1.append(thdn(ch1, freq, fs))
@@ -41,10 +42,6 @@ with h5.File(sys.argv[2], "r") as f:
         xcorr = correlate(ch1, ch2)
         shift = dt[xcorr.argmax()]
         shifts.append(shift)
-        print("Reading: {:.2f}%   ".format(100*ind/(data.shape[1]-chunk_size)),
-              end='\r')
-
-print('Reading: 100.00%    ')
 
 try:
     ppl.figure(0)
