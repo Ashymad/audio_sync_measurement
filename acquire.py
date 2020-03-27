@@ -1,9 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 from PyHT6022.LibUsbScope import Oscilloscope
 import time
 import h5py as h5
 import sys
+from tqdm import tqdm
 
 fs = 1e6
 voltage_range = 1
@@ -37,26 +38,28 @@ with h5.File(sys.argv[2], 'w') as f:
     data = f.create_dataset("data", (2, maxsize), maxshape=(2, maxsize),
                             dtype='uint8')
 
-    def extend_callback(ch1_data, ch2_data):
-        global size
-        dsize = len(ch1_data)
-        if (len(ch1_data) > 0 and len(ch2_data) > 0) and\
-                (max(ch1_data) > 255 or max(ch2_data) > 255):
-            raise ValueError("Value too big for uint8")
-        if size < maxsize - dsize:
-            data[0, size:(size + dsize)] = ch1_data
-            data[1, size:(size + dsize)] = ch2_data
-            size += dsize
-        return size < maxsize - dsize
-
     print("Clearing FIFO and starting data transfer...")
-    scope.start_capture()
-    shutdown_event = scope.read_async(extend_callback, data_points,
-                                      outstanding_transfers=outstanding_transfers,
-                                      raw=True)
-    stime = time.time()
-    while size < maxsize - data_points//num_channels:
-        scope.poll()
+    with tqdm(total=maxsize) as t:
+        def extend_callback(ch1_data, ch2_data):
+            global size
+            dsize = len(ch1_data)
+            if (len(ch1_data) > 0 and len(ch2_data) > 0) and\
+                    (max(ch1_data) > 255 or max(ch2_data) > 255):
+                raise ValueError("Value too big for uint8")
+            if size < maxsize - dsize:
+                data[0, size:(size + dsize)] = ch1_data
+                data[1, size:(size + dsize)] = ch2_data
+                size += dsize
+                t.update(dsize)
+            return size < maxsize - dsize
+
+        scope.start_capture()
+        shutdown_event = scope.read_async(extend_callback, data_points,
+                                          outstanding_transfers=outstanding_transfers,
+                                          raw=True)
+        stime = time.time()
+        while size < maxsize - data_points//num_channels:
+            scope.poll()
     print("Time:", time.time() - stime)
     scope.stop_capture()
     print("Stopping new transfers.")
