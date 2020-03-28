@@ -41,7 +41,7 @@ with h5.File(sys.argv[1], "r") as f:
             shifts.append(shift)
 
 try:
-    np.save("offest_{}.npy".format(sys.argv[1]), shifts)
+    np.save("offset_{}.npy".format(sys.argv[1]), shifts)
     ppl.figure(0)
     sx = chunk_size*np.arange(0, len(shifts))/fs
     ppl.plot(sx, shifts)
